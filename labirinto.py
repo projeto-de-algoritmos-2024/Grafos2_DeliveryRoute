@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import PhotoImage
 import heapq
-import copy
 import random
+import time
 
 class AnimatedGIF(tk.Label):
     def __init__(self, master, path, delay=100):
@@ -43,6 +43,7 @@ class LabirintoApp:
 
         self.motoboy = AnimatedGIF(self.canvas, "./images/polvo.gif", 350)
         self.inimigo = AnimatedGIF(self.canvas, "./images/alien.gif", 350)
+        self.imagem_tinta = PhotoImage(file="./images/tinta_max.png")
 
         self.btn_reiniciar = tk.Button(self.control_frame, text="Reiniciar", command=self.reiniciar_jogo)
         self.btn_reiniciar.pack(side=tk.LEFT, padx=5)
@@ -58,6 +59,7 @@ class LabirintoApp:
         self.inimigo_x = self.inimigo_y = None
 
         self.matriz = [[0] * self.colunas for _ in range(self.linhas)]
+        self.ultima_tinta = 0
 
         self.criar_labirinto()
         self.canvas.bind("<KeyPress>", self.movimentar_motoboy)
@@ -78,11 +80,6 @@ class LabirintoApp:
                 dx, dy = random.choice(direction)
                 self.matriz[linha + dy][coluna + dx] = 1
 
-        # Adicionar pisos com pesos diferentes
-        for _ in range(10):
-            linha, coluna = random.randint(1, self.linhas - 2), random.randint(1, self.colunas - 2)
-            self.matriz[linha][coluna] = 2
-
         for _ in range(5):
             linha, coluna = random.randint(1, self.linhas - 2), random.randint(1, self.colunas - 2)
             self.matriz[linha][coluna] = 3
@@ -93,10 +90,6 @@ class LabirintoApp:
                 x2, y2 = x1 + self.tamanho_celula, y1 + self.tamanho_celula
                 if self.matriz[linha][coluna] == 1:
                     self.canvas.create_rectangle(x1, y1, x2, y2, fill="black")
-                elif self.matriz[linha][coluna] == 2:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="purple")
-                elif self.matriz[linha][coluna] == 3:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="red")
                 elif linha == 1 and coluna == 1:
                     self.motoboy_x, self.motoboy_y = coluna, linha
                     self.motoboy.place(x=x1, y=y1)
@@ -121,11 +114,23 @@ class LabirintoApp:
             nova_x -= 1
         elif direcao == "Right":
             nova_x += 1
+        elif direcao == "space":
+            self.criar_tinta()
 
         if self.matriz[nova_y][nova_x] == 0 or self.matriz[nova_y][nova_x] in (2, 3):
             self.motoboy_x, self.motoboy_y = nova_x, nova_y
             x1, y1 = nova_x * self.tamanho_celula, nova_y * self.tamanho_celula
             self.motoboy.place(x=x1, y=y1)
+
+    def criar_tinta(self):
+        current_time = time.time()
+        if current_time - self.ultima_tinta >= 5:  # Permite criar tinta a cada 5 segundos
+            self.ultima_tinta = current_time
+            x, y = self.motoboy_x, self.motoboy_y
+            self.matriz[y][x] = 3
+            x1, y1 = x * self.tamanho_celula, y * self.tamanho_celula
+            self.canvas.create_image(x1 + self.tamanho_celula // 2, y1 + self.tamanho_celula // 2,
+                                     image=self.imagem_tinta, tags="tinta")
 
     def movimentar_inimigo_continuamente(self):
         self.movimentar_inimigo()
@@ -191,8 +196,8 @@ if __name__ == "__main__":
     largura_screen = root.winfo_screenwidth()
     altura_screen = root.winfo_screenheight()
 
-    largura = int(largura_screen)  # 80% da largura da tela
-    altura = int(altura_screen * 0.95)    # 60% da altura da tela
+    largura = int(largura_screen * 0.95)  # 95% da largura da tela
+    altura = int(altura_screen * 0.95)    # 95% da altura da tela
     tamanho_celula = 64
 
     app = LabirintoApp(root, largura, altura, tamanho_celula)

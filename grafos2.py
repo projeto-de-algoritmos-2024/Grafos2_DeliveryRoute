@@ -15,7 +15,7 @@ class PlanoCartesianoApp:
         self.canvas = tk.Canvas(master, width=largura, height=altura)
         self.canvas.pack()
 
-        self.imagem_motoboy = PhotoImage(file="boy.png")
+        self.imagem_motoboy = PhotoImage(file="./images/polvo.gif")
 
         self.btn_motoboy = tk.Button(self.control_frame, text="Selecionar ponto inicial do motoboy", command=self.selecionar_motoboy)
         self.btn_motoboy.pack(side=tk.LEFT, padx=5)

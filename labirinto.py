@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import PhotoImage
 import heapq
 import copy
+import random
 
 class LabirintoApp:
     def __init__(self, master, largura, altura, tamanho_celula):
@@ -43,8 +44,13 @@ class LabirintoApp:
             for coluna in range(self.colunas):
                 if linha == 0 or linha == self.linhas - 1 or coluna == 0 or coluna == self.colunas - 1:
                     self.matriz[linha][coluna] = 1
-                elif linha % 2 == 0 and coluna % 2 == 0:
-                    self.matriz[linha][coluna] = 1
+
+        for linha in range(2, self.linhas - 2, 2):
+            for coluna in range(2, self.colunas - 2, 2):
+                self.matriz[linha][coluna] = 1
+                direction = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                dx, dy = random.choice(direction)
+                self.matriz[linha + dy][coluna + dx] = 1
 
         for linha in range(self.linhas):
             for coluna in range(self.colunas):
@@ -55,11 +61,12 @@ class LabirintoApp:
                 elif linha == 1 and coluna == 1:
                     self.motoboy_x, self.motoboy_y = coluna, linha
                     self.canvas.create_image(x1 + self.tamanho_celula // 2, y1 + self.tamanho_celula // 2,
-                                             image=self.imagem_motoboy, tags="motoboy")
+                                            image=self.imagem_motoboy, tags="motoboy")
                 elif linha == self.linhas - 2 and coluna == self.colunas - 2:
                     self.inimigo_x, self.inimigo_y = coluna, linha
                     self.canvas.create_image(x1 + self.tamanho_celula // 2, y1 + self.tamanho_celula // 2,
-                                             image=self.imagem_inimigo, tags="inimigo")
+                                            image=self.imagem_inimigo, tags="inimigo")
+
 
     def reiniciar_jogo(self):
         self.canvas.delete("all")
@@ -88,7 +95,7 @@ class LabirintoApp:
 
     def movimentar_inimigo_continuamente(self):
         self.movimentar_inimigo()
-        self.master.after(100, self.movimentar_inimigo_continuamente)
+        self.master.after(180, self.movimentar_inimigo_continuamente)
 
     def movimentar_inimigo(self):
         caminho = self.dijkstra((self.inimigo_x, self.inimigo_y), (self.motoboy_x, self.motoboy_y))

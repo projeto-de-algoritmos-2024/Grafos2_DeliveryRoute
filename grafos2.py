@@ -1,13 +1,39 @@
 import tkinter as tk
 from tkinter import PhotoImage
 import heapq
-import copy
+import random
+import time
 
+class AnimatedGIF(tk.Label):
+    def __init__(self, master, path, delay=100):
+        tk.Label.__init__(self, master)
+        self.master = master
+        self.delay = delay
+        self.frames = []
+        self.load_frames(path)
+        self.current_frame = 0
+        self.show_frame()
 
-class PlanoCartesianoApp:
+    def load_frames(self, path):
+        i = 0
+        while True:
+            try:
+                frame = PhotoImage(file=path, format=f"gif -index {i}")
+                self.frames.append(frame)
+                i += 1
+            except:
+                break
+
+    def show_frame(self):
+        if self.frames:
+            self.config(image=self.frames[self.current_frame])
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+            self.master.after(self.delay, self.show_frame)
+
+class LabirintoApp:
     def __init__(self, master, largura, altura, tamanho_celula):
         self.master = master
-        master.title("Plano Cartesiano")
+        master.title("Labirinto")
 
         self.control_frame = tk.Frame(master)
         self.control_frame.pack(fill=tk.X)
@@ -15,20 +41,12 @@ class PlanoCartesianoApp:
         self.canvas = tk.Canvas(master, width=largura, height=altura)
         self.canvas.pack()
 
-        self.imagem_motoboy = PhotoImage(file="./images/polvo.gif")
+        self.motoboy = AnimatedGIF(self.canvas, "./images/polvo.gif", 350)
+        self.inimigo = AnimatedGIF(self.canvas, "./images/alien.gif", 350)
+        self.imagem_tinta = PhotoImage(file="./images/tinta_max.png")
 
-        self.btn_motoboy = tk.Button(self.control_frame, text="Selecionar ponto inicial do motoboy", command=self.selecionar_motoboy)
-        self.btn_motoboy.pack(side=tk.LEFT, padx=5)
-
-        self.btn_entrega = tk.Button(self.control_frame, text="Montar o grafo", command=self.selecionar_vertices)
-        self.btn_entrega.pack(side=tk.LEFT, padx=5)
-
-        self.btn_pontos_entrega = tk.Button(self.control_frame, text="Selecionar pontos de entrega", command=self.selecionar_pontos_entrega)
-        self.btn_pontos_entrega.pack(side=tk.LEFT, padx=5)
-
-        self.btn_iniciar = tk.Button(self.control_frame, text="Iniciar Entrega", command=self.iniciar_entrega)
-        self.btn_iniciar.pack(side=tk.LEFT, padx=5)
-        self.btn_iniciar['state'] = tk.DISABLED
+        self.btn_reiniciar = tk.Button(self.control_frame, text="Reiniciar", command=self.reiniciar_jogo)
+        self.btn_reiniciar.pack(side=tk.LEFT, padx=5)
 
         self.largura = largura
         self.altura = altura
@@ -37,142 +55,101 @@ class PlanoCartesianoApp:
         self.linhas = altura // tamanho_celula
         self.colunas = largura // tamanho_celula
 
-        self.pontos = [[0] * self.colunas for _ in range(self.linhas)]
         self.motoboy_x = self.motoboy_y = None
-        self.pontos = []
-        self.pontos_entrega = []
-        self.global_pontos = []
-        self.grafo = []
-        self.aresta_pontos = {}  # Dictionary to store the points for each edge
-        self.pontos_entregues = []
+        self.inimigo_x = self.inimigo_y = None
 
-        self.desenhar_plano_cartesiano()
+        self.matriz = [[0] * self.colunas for _ in range(self.linhas)]
+        self.ultima_tinta = 0
 
-        self.cor_selecionada = None
-        self.criar_legenda()
+        self.criar_labirinto()
+        self.canvas.bind("<KeyPress>", self.movimentar_motoboy)
+        self.canvas.focus_set()
 
-        self.selecionando_motoboy = False
-        self.selecionando_entregas = False
-        self.selecionando_pontos_entrega = False
-        self.canvas.bind("<Button-1>", self.canvas_click)
+        self.movimentar_inimigo_continuamente()
 
-    def desenhar_plano_cartesiano(self):
-        for linha in range(self.linhas + 1):
-            y = linha * self.tamanho_celula
-            self.canvas.create_line(0, y, self.largura, y, fill="black")
-        for coluna in range(self.colunas + 1):
-            x = coluna * self.tamanho_celula
-            self.canvas.create_line(x, 0, x, self.altura, fill="black")
+    def criar_labirinto(self):
+        for linha in range(self.linhas):
+            for coluna in range(self.colunas):
+                if linha == 0 or linha == self.linhas - 1 or coluna == 0 or coluna == self.colunas - 1:
+                    self.matriz[linha][coluna] = 1
 
-    def canvas_click(self, event):
-        coluna = event.x // self.tamanho_celula
-        linha = event.y // self.tamanho_celula
+        for linha in range(2, self.linhas - 2, 2):
+            for coluna in range(2, self.colunas - 2, 2):
+                self.matriz[linha][coluna] = 1
+                direction = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                dx, dy = random.choice(direction)
+                self.matriz[linha + dy][coluna + dx] = 1
 
-        if self.selecionando_motoboy:
-            if self.is_vertex(coluna, linha):
-                self.motoboy_x, self.motoboy_y = coluna, linha
-                self.canvas.create_image(coluna * self.tamanho_celula + self.tamanho_celula // 2,
-                                         linha * self.tamanho_celula + self.tamanho_celula // 2,
-                                         image=self.imagem_motoboy, tags="motoboy")
-                self.selecionando_motoboy = False
-                self.btn_motoboy['state'] = tk.DISABLED
+        for _ in range(5):
+            linha, coluna = random.randint(1, self.linhas - 2), random.randint(1, self.colunas - 2)
+            self.matriz[linha][coluna] = 3
 
-        elif self.selecionando_entregas:
-            if (coluna, linha) != (self.motoboy_x, self.motoboy_y):
-                self.pontos.append((coluna, linha))
-                self.canvas.create_rectangle(coluna * self.tamanho_celula, linha * self.tamanho_celula,
-                                             (coluna + 1) * self.tamanho_celula, (linha + 1) * self.tamanho_celula,
-                                             fill="black")
-                if len(self.pontos) == 2:
-                    self.grafo.append((self.pontos[0], self.pontos[1], self.cor_selecionada))
-                    self.pontos = []
+        for linha in range(self.linhas):
+            for coluna in range(self.colunas):
+                x1, y1 = coluna * self.tamanho_celula, linha * self.tamanho_celula
+                x2, y2 = x1 + self.tamanho_celula, y1 + self.tamanho_celula
+                if self.matriz[linha][coluna] == 1:
+                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="black")
+                elif linha == 1 and coluna == 1:
+                    self.motoboy_x, self.motoboy_y = coluna, linha
+                    self.motoboy.place(x=x1, y=y1)
+                elif linha == self.linhas - 2 and coluna == self.colunas - 2:
+                    self.inimigo_x, self.inimigo_y = coluna, linha
+                    self.inimigo.place(x=x1, y=y1)
 
-                self.desenhar_arestas()
+    def reiniciar_jogo(self):
+        self.canvas.delete("all")
+        self.matriz = [[0] * self.colunas for _ in range(self.linhas)]
+        self.criar_labirinto()
 
-            if len(self.grafo) >= 3:
-                self.selecionando_entregas = False
-                self.btn_entrega['state'] = tk.DISABLED
+    def movimentar_motoboy(self, event):
+        direcao = event.keysym
+        nova_x, nova_y = self.motoboy_x, self.motoboy_y
 
-        elif self.selecionando_pontos_entrega:
-            if self.is_vertex(coluna, linha) and (coluna, linha) != (self.motoboy_x, self.motoboy_y) and (coluna, linha) not in self.pontos_entrega:
-                self.pontos_entrega.append((coluna, linha))
-                self.canvas.create_rectangle(coluna * self.tamanho_celula, linha * self.tamanho_celula,
-                                             (coluna + 1) * self.tamanho_celula, (linha + 1) * self.tamanho_celula,
-                                             fill="blue")
-            if len(self.pontos_entrega) >= len(self.grafo):
-                self.selecionando_pontos_entrega = False
-                self.btn_pontos_entrega['state'] = tk.DISABLED
-                if len(self.pontos_entrega) > 0:
-                    self.btn_iniciar['state'] = tk.NORMAL
+        if direcao == "Up":
+            nova_y -= 1
+        elif direcao == "Down":
+            nova_y += 1
+        elif direcao == "Left":
+            nova_x -= 1
+        elif direcao == "Right":
+            nova_x += 1
+        elif direcao == "space":
+            self.criar_tinta()
 
-    def is_vertex(self, coluna, linha):
-        for (ponto1, ponto2, cor) in self.grafo:
-            if (coluna, linha) == ponto1 or (coluna, linha) == ponto2:
-                return True
-        return False
+        if self.matriz[nova_y][nova_x] == 0 or self.matriz[nova_y][nova_x] in (2, 3):
+            self.motoboy_x, self.motoboy_y = nova_x, nova_y
+            x1, y1 = nova_x * self.tamanho_celula, nova_y * self.tamanho_celula
+            self.motoboy.place(x=x1, y=y1)
 
-    def selecionar_motoboy(self):
-        self.selecionando_motoboy = True
+    def criar_tinta(self):
+        current_time = time.time()
+        if current_time - self.ultima_tinta >= 5:  # Permite criar tinta a cada 5 segundos
+            self.ultima_tinta = current_time
+            x, y = self.motoboy_x, self.motoboy_y
+            self.matriz[y][x] = 3
+            x1, y1 = x * self.tamanho_celula, y * self.tamanho_celula
+            self.canvas.create_image(x1 + self.tamanho_celula // 2, y1 + self.tamanho_celula // 2,
+                                     image=self.imagem_tinta, tags="tinta")
 
-    def selecionar_vertices(self):
-        self.selecionando_entregas = True
-        self.desenhar_arestas()
+    def movimentar_inimigo_continuamente(self):
+        self.movimentar_inimigo()
+        delay = int(self.matriz[self.inimigo_y][self.inimigo_x]) * 180
+        if delay == 0:
+            delay = 180
+        self.master.after(delay, self.movimentar_inimigo_continuamente)
 
-    def selecionar_pontos_entrega(self):
-        self.selecionando_pontos_entrega = True
+    def movimentar_inimigo(self):
+        caminho = self.dijkstra((self.inimigo_x, self.inimigo_y), (self.motoboy_x, self.motoboy_y))
+        if caminho and len(caminho) > 1:
+            self.inimigo_x, self.inimigo_y = caminho[1]
+            x1, y1 = self.inimigo_x * self.tamanho_celula, self.inimigo_y * self.tamanho_celula
+            self.inimigo.place(x=x1, y=y1)
+            if self.inimigo_x == self.motoboy_x and self.inimigo_y == self.motoboy_y:
+                self.game_over()
 
-    def criar_legenda(self):
-        cores = ["#00FF00", "#33CC00", "#66CC00", "#99CC00", "#CCCC00", "#FFCC00", "#FF9900", "#FF6600", "#FF3300", "#FF0000"]
-        self.legenda_frame = tk.Frame(self.control_frame)
-        self.legenda_frame.pack(side=tk.RIGHT, padx=5)
-        self.legenda_labels = []
-        for i, cor in enumerate(cores):
-            label = tk.Label(self.legenda_frame, bg=cor, width=2, height=1)
-            label.grid(row=0, column=i, padx=1)
-            label.bind("<Button-1>", lambda e, idx=i: self.selecionar_cor_legenda(idx))
-            self.legenda_labels.append(label)
-        self.selecionar_cor_legenda(0)  # Seleciona a cor verde mais clara por padrão
-
-    def selecionar_cor_legenda(self, idx):
-        cores = ["#00FF00", "#33CC00", "#66CC00", "#99CC00", "#CCCC00", "#FFCC00", "#FF9900", "#FF6600", "#FF3300", "#FF0000"]
-        self.cor_selecionada = [cores[idx], idx]
-        for label in self.legenda_labels:
-            label.config(relief=tk.FLAT)
-        self.legenda_labels[idx].config(relief=tk.SUNKEN)
-
-    def desenhar_arestas(self):
-        self.canvas.delete("aresta")
-        for (ponto1, ponto2, cor) in self.grafo:
-            x1, y1 = ponto1
-            x2, y2 = ponto2
-            aresta_chave = f"{ponto1}-{ponto2}"
-            self.aresta_pontos[aresta_chave] = []  # Initialize the list of points for this edge
-            self.aresta_pontos[aresta_chave].append(ponto1)
-            while (x1 != x2 or y1 != y2):
-                if x1 != x2:
-                    x1 += 1 if x1 < x2 else -1
-                elif y1 != y2:
-                    y1 += 1 if y1 < y2 else -1
-
-                if (x1, y1) != (x2, y2):
-                    tag = f"{x1},{y1}"
-                    self.canvas.create_rectangle(x1 * self.tamanho_celula, y1 * self.tamanho_celula,
-                                                (x1 + 1) * self.tamanho_celula, (y1 + 1) * self.tamanho_celula,
-                                                fill=cor[0], tags=("aresta", tag))
-                    self.aresta_pontos[aresta_chave].append((x1, y1))
-            self.aresta_pontos[aresta_chave].append(ponto2)
-
-    def iniciar_entrega(self):
-        if self.motoboy_x is not None and self.pontos_entrega:
-            self.entregar_proximo_ponto()
-
-    def entregar_proximo_ponto(self):
-        if self.pontos_entrega:
-            ponto_mais_proximo = self.encontrar_ponto_mais_proximo()
-            if ponto_mais_proximo:
-                self.movimentos = self.dijkstra((self.motoboy_x, self.motoboy_y), ponto_mais_proximo)
-                self.pontos_entrega.remove(ponto_mais_proximo)
-                self.mover_motoboy()
+    def game_over(self):
+        self.canvas.create_text(self.largura // 2, self.altura // 2, text="Game Over", font=("Arial", 24), fill="red")
 
     def dijkstra(self, start, end):
         pq = [(0, start)]
@@ -190,7 +167,12 @@ class PlanoCartesianoApp:
                     path.append(current)
                     current = prev[current]
                 return path[::-1]
-            for neighbor, weight in self.get_neighbors(current):
+            for neighbor in self.get_neighbors(current):
+                weight = 1
+                if self.matriz[neighbor[1]][neighbor[0]] == 2:
+                    weight = 2
+                elif self.matriz[neighbor[1]][neighbor[0]] == 3:
+                    weight = 3
                 distance = current_dist + weight
                 if neighbor not in dist or distance < dist[neighbor]:
                     dist[neighbor] = distance
@@ -199,92 +181,24 @@ class PlanoCartesianoApp:
         return []
 
     def get_neighbors(self, node):
+        x, y = node
         neighbors = []
-        for (ponto1, ponto2, cor) in self.grafo:
-            weight = cor[1] + 1  # O índice da cor representa o peso
-            if node == ponto1:
-                neighbors.append((ponto2, weight))
-            elif node == ponto2:
-                neighbors.append((ponto1, weight))
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.colunas and 0 <= ny < self.linhas and self.matriz[ny][nx] != 1:
+                neighbors.append((nx, ny))
         return neighbors
 
-    def encontrar_ponto_mais_proximo(self):
-        min_dist = float('inf')
-        closest_point = None
-        for ponto in self.pontos_entrega:
-            caminho = self.dijkstra((self.motoboy_x, self.motoboy_y), ponto)
-            if caminho:
-                dist = sum(self.get_edge_weight(caminho[i], caminho[i + 1]) for i in range(len(caminho) - 1))
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_point = ponto
-        return closest_point
+if __name__ == "__main__":
+    root = tk.Tk()
 
-    def get_edge_weight(self, ponto1, ponto2):
-        for (p1, p2, cor) in self.grafo:
-            if (ponto1 == p1 and ponto2 == p2) or (ponto1 == p2 and ponto2 == p1):
-                return cor[1] + 1
-        return float('inf')
+    largura_screen = root.winfo_screenwidth()
+    altura_screen = root.winfo_screenheight()
 
-    def mover_motoboy(self):
-        if self.movimentos:
-            x1, y1 = self.motoboy_x, self.motoboy_y
-            x2, y2 = self.movimentos[0]
+    largura = int(largura_screen * 0.95)  # 95% da largura da tela
+    altura = int(altura_screen * 0.95)    # 95% da altura da tela
+    tamanho_celula = 64
 
-            aresta_chave_1 = f"{(x1, y1)}-{(x2, y2)}"
-            aresta_chave_2 = f"{(x2, y2)}-{(x1, y1)}"
-            
-            if aresta_chave_1 in self.aresta_pontos:
-                self.global_pontos = copy.deepcopy(self.aresta_pontos.get(aresta_chave_1, []))
-            elif aresta_chave_2 in self.aresta_pontos:
-                self.global_pontos = list(reversed(copy.deepcopy(self.aresta_pontos.get(aresta_chave_2, []))))
-            else:
-                self.global_pontos = []
-    
-            self.mover_passo_a_passo()
-        else:
-            if self.pontos_entrega:
-                self.entregar_proximo_ponto()
-            else:
-                self.motoboy_entrega_concluida()
-
-    def mover_passo_a_passo(self):
-        if self.global_pontos:
-            next_x, next_y = self.global_pontos.pop(0)
-            self.rastro(self.motoboy_x, self.motoboy_y)
-            self.canvas.delete("motoboy")
-            self.canvas.create_image(next_x * self.tamanho_celula + self.tamanho_celula // 2,
-                                    next_y * self.tamanho_celula + self.tamanho_celula // 2,
-                                    image=self.imagem_motoboy, tags="motoboy")
-            self.motoboy_x, self.motoboy_y = next_x, next_y
-            self.master.after(500, self.mover_passo_a_passo)
-        else:
-            if self.movimentos:
-                self.movimentos.pop(0)  # Move to the next movement step
-                self.mover_motoboy()
-
-
-
-    def rastro(self, x, y):
-        tag = f"{x},{y}"
-        items = self.canvas.find_withtag(tag)
-        if items:
-            self.canvas.itemconfig(items[0], fill="gray")
-        else:
-            self.canvas.create_rectangle(x * self.tamanho_celula, y * self.tamanho_celula,
-                                        (x + 1) * self.tamanho_celula, (y + 1) * self.tamanho_celula,
-                                        fill="gray", tags=("aresta", tag))
-
-
-
-    def motoboy_entrega_concluida(self):
-        self.canvas.create_text(self.motoboy_x * self.tamanho_celula + self.tamanho_celula // 2,
-                                self.motoboy_y * self.tamanho_celula + self.tamanho_celula // 2,
-                                text="✔️", font=("Arial", 24), fill="green")
-
-root = tk.Tk()
-largura = 1024
-altura = 1024
-tamanho_celula = 64
-app = PlanoCartesianoApp(root, largura, altura, tamanho_celula)
-root.mainloop()
+    app = LabirintoApp(root, largura, altura, tamanho_celula)
+    root.mainloop()

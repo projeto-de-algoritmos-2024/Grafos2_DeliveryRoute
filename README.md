@@ -40,3 +40,6 @@ O objetivo deste projeto é desenvolver um jogo de labirinto onde um polvo, repr
 - Use as setas do teclado para mover o motoboy pelo labirinto.
 - Pressione a barra de espaço para criar obstáculos de tinta no labirinto.
 - Pressione o botão "Reiniciar" para reiniciar o jogo.
+
+## Vídeo Apresentação
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/K8ZTrF1DruY" title="Projeto Módulo 2  - Projetos de Algoritmo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>

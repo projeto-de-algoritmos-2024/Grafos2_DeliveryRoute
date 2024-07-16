@@ -35,7 +35,7 @@ O objetivo deste projeto é desenvolver um jogo de labirinto onde um polvo, repr
 
 1. Clone o repositório.
 2. Navegue até o diretório do projeto.
-3. Execute o comando `python3 labirinto.py` no terminal.
+3. Execute o comando `python3 grafos2.py` no terminal.
 
 ## Uso
 

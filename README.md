@@ -15,10 +15,17 @@ O objetivo deste projeto é desenvolver um jogo de labirinto onde um polvo, repr
 
 ## Screenshots
 
+### Screenshots Personagens
 ![Exemplo do motoboy em movimento](/images/polvo.gif)
 ![Exemplo do inimigo em movimento](/images/alien.gif)
 ![Exemplo de tinta criada pelo motoboy](/images/tinta_max.png)
+
+
+### Screenshot Jogo Funcionando
 ![Screenshot do Jogo](/images/jogo.png)
+
+### Screenshot Game Over
+![Screenshot do Jogo](/images/game-over.png)
 
 
 ## Instalação
